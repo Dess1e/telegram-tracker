@@ -3,4 +3,5 @@ __pycache__/
 .idea/
 venv/
 app.session
+session.session
 cfg.ini
