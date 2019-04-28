@@ -1,29 +1,21 @@
-
-import configparser
 import logging as log
 from sqlalchemy import create_engine
-from sqlalchemy.types import String, Integer, Date
+from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.types import String, Integer, Date, Boolean
 from sqlalchemy.schema import Column
 from sqlalchemy.ext.declarative import declarative_base
-from main import CFG, CONFIG_NAME
+from cfg import extract_db_cfg, get_cfg
 
 
-def extract_db_cfg(cfg):
-    try:
-        db = cfg['postgres']['db_name']
-        user = cfg['postgres']['db_user']
-        passwd = cfg['postgres']['db_pass']
-        return db, user, passwd
-    except KeyError:
-        log.error(f'Could not parse postgres section in {CONFIG_NAME}')
-        quit(1)
-
-
-db, user, passwd = extract_db_cfg(CFG)
+db, user, passwd = extract_db_cfg(get_cfg())
 
 engine = create_engine(
     f'postgresql://{user}:{passwd}@localhost/{db}'
 )
+
+session = sessionmaker(autocommit=True, autoflush=False, bind=engine)
+
+tracker_session = scoped_session(session)
 
 Base = declarative_base()
 
@@ -31,16 +23,36 @@ Base = declarative_base()
 class OnlineHistory(Base):
     __tablename__ = 'online_history'
 
-    user_id = Column(Integer())
-    time = Column(Date())
+    user_id = Column(Integer(), primary_key=True)
+    time = Column(Date(), primary_key=True)
     new_status = Column(String())
 
 
 class LastOnline(Base):
     __tablename__ = 'last_online'
 
-    user_id = Column(Integer())
-    time = Column(Date())
+    user_id = Column(Integer(), primary_key=True)
+    time = Column(Date(), primary_key=True)
     last_status = Column(String())
 
 
+class UserInfo(Base):
+    __tablename__ = 'user_info'
+
+    user_id = Column(Integer(), primary_key=True)
+    first_name = Column(String())
+    last_name = Column(String())
+    user_name = Column(String())
+    bio = Column(String())
+    trackable_online = Column(Boolean())
+    last_modified = Column(Date())
+
+
+class UserInfoHistory(Base):
+    __tablename__ = 'user_info_history'
+
+    user_id = Column(Integer(), primary_key=True)
+    time = Column(Date())
+    changed_field = Column(String())
+    old_value = Column(String())
+    new_value = Column(String())

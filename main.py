@@ -1,29 +1,17 @@
-
-import configparser
 import logging as log
 from tracker import Tracker
+from cfg import get_cfg, extract_telegram_cfg
 
 
-CONFIG_NAME = 'cfg.ini'
-
-CFG = configparser.ConfigParser()
-CFG.read(CONFIG_NAME)
-
-
-def extract_telegram_cfg(cfg):
-    try:
-        api_id = cfg['telegram']['api_id']
-        api_hash = cfg['telegram']['api_hash']
-        phone = cfg['telegram']['phone']
-        return api_id, api_hash, phone
-    except KeyError:
-        log.error(f'Could not parse telegram section in {CONFIG_NAME}')
-        quit(1)
+log.basicConfig(
+    format='%(asctime)s %(message)s',
+    datefmt='%m/%d/%Y %I:%M:%S %p',
+    level=log.WARN
+)
 
 
 def main():
-
-    api_id, api_hash, phone = extract_telegram_cfg(CFG)
+    api_id, api_hash, phone = extract_telegram_cfg(get_cfg())
 
     tr = Tracker(
         api_id=api_id,
