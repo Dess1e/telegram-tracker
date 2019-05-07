@@ -1,4 +1,3 @@
-import logging as log
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.types import String, Integer, Date, Boolean
@@ -56,3 +55,9 @@ class UserInfoHistory(Base):
     changed_field = Column(String())
     old_value = Column(String())
     new_value = Column(String())
+
+
+#class DeletedMessage(Base):
+   # __tablename__ = 'deleted_messages'
+
+   # user_id = ...

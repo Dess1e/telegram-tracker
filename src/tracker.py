@@ -1,7 +1,11 @@
 from time import sleep
 from datetime import datetime
+import shutil
 
-from pyrogram import Client, UserStatus, UserStatusHandler, DeletedMessagesHandler
+from pyrogram import (
+    Client, UserStatus, UserStatusHandler, DeletedMessagesHandler, Messages, Message,
+    Dialog
+)
 import schedule as sch
 import logging as log
 
@@ -10,12 +14,9 @@ from db import (
 )
 
 from utils import (
-    get_user_bio, rows_equal, timer, get_rows_difference, parse_user_status
+    get_user_bio, rows_equal, timer, get_rows_difference, parse_user_status,
+    parse_message
 )
-
-
-def parse_deleted_message(client: Client, messages: list):
-    print('delted messages', messages)
 
 
 class Tracker:
@@ -26,6 +27,8 @@ class Tracker:
             api_hash=api_hash,
             phone_number=phone
         )
+
+        self.bulk = []
 
     @timer
     def update_user_info(self):
@@ -82,38 +85,66 @@ class Tracker:
             log.warn(f'While updating user info {user_info_changed_count} users'
                      f' changed info')
 
-    def on_changed_status(self, client: Client, user_status: UserStatus):
+    def on_changed_status(self, _: Client, user_status: UserStatus):
         user = tracker_session.query(LastOnline).filter(
             LastOnline.user_id == user_status.user_id
         ).scalar()
 
-        online_status = parse_user_status(user_status)
+        new_status = parse_user_status(user_status)
 
         if user is None:
             tracker_session.add(
                 LastOnline(
                     user_id=user_status.user_id,
                     time=datetime.now(),
-                    last_status=online_status
+                    last_status=new_status
                 )
             )
             tracker_session.flush()
-        elif user.last_status == online_status:
-            log.warn('User online status was doubled, skipping')
+        elif user.last_status == new_status:
+            log.warn('User online status was doubled, skipping'
+                     f' uid: {user_status.user_id}')
             # TODO: sometimes we dont get a message about someone going offline
             # TODO: make sure we dont leave someone hanging online for 100 hours
             # TODO: because of unclosed online status
             # Hint: if we get doubled message just save that online sess as
             # 300 secs sess
         else:
-            user.last_status = online_status
+            log.warn(f'User {user_status.user_id} is now {new_status}')
+            user.last_status = new_status
+            self.bulk.append(
+                OnlineHistory(
+                    user_id=user_status.user_id,
+                    time=datetime.now(),
+                    new_status=new_status
+                )
+            )
             tracker_session.flush()
+
+    @timer
+    def flush_bulk(self):
+        tracker_session.bulk_save_objects(self.bulk)
+        self.bulk.clear()
+
+    @timer
+    def update_user_photos(self):
+        shutil.rmtree('pics/')
+        for contact in self.client.get_contacts():
+            photos = self.client.get_user_profile_photos(contact.id).photos
+            if not len(photos):
+                continue
+            st = photos[0]
+            self.client.download_media(
+                message=st,
+                file_name=f'pics/{contact.id}.jpg'
+            )
 
     def start(self):
         self.client.add_handler(UserStatusHandler(self.on_changed_status))
-        self.client.add_handler(DeletedMessagesHandler(parse_deleted_message))
 
         sch.every(1).minute.do(self.update_user_info)
+        sch.every(1).minute.do(self.flush_bulk)
+        sch.every(6).hours.do(self.update_user_photos)
 
         self.client.start()
 

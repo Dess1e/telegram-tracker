@@ -3,7 +3,7 @@ import requests
 import logging as log
 from time import time
 
-from pyrogram import UserStatus
+from pyrogram import UserStatus, Message
 
 
 def get_user_bio(username):
@@ -70,3 +70,4 @@ def parse_user_status(status: UserStatus):
         return 'offline'
     if status.recently:
         return 'recently'
+
