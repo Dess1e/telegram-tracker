@@ -1,0 +1,7 @@
+psycopg2-binary
+pyrogram
+sqlalchemy
+schedule
+BeautifulSoup4
+requests
+TgCrypto

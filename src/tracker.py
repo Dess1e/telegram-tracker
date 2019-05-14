@@ -14,8 +14,7 @@ from db import (
 )
 
 from utils import (
-    get_user_bio, rows_equal, timer, get_rows_difference, parse_user_status,
-    parse_message
+    get_user_bio, rows_equal, timer, get_rows_difference, parse_user_status
 )
 
 
