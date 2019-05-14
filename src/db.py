@@ -56,8 +56,3 @@ class UserInfoHistory(Base):
     old_value = Column(String())
     new_value = Column(String())
 
-
-#class DeletedMessage(Base):
-   # __tablename__ = 'deleted_messages'
-
-   # user_id = ...
