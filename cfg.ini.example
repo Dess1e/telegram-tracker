@@ -1,0 +1,9 @@
+[postgres]
+db_name=postgres
+db_user=postgres
+db_pass=postgres
+[telegram]
+# Get your api_id and api_hash from my.telegram.org
+api_id=your_api_id
+api_hash=your_api_hash
+phone=your_phone

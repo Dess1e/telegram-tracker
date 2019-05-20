@@ -1,7 +1,8 @@
 
-__pycache__/
+**/__pycache__/
 .idea/
 venv/
 app.session
+session.sync
 session.session
 cfg.ini
