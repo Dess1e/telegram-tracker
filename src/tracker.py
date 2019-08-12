@@ -1,6 +1,6 @@
 from time import sleep
 from datetime import datetime
-import shutil
+from multiprocessing import Process, Queue
 
 from pyrogram import (
     Client, UserStatus, UserStatusHandler, DeletedMessagesHandler, Messages, Message,
@@ -14,11 +14,11 @@ from db import (
 )
 
 from utils import (
-    get_user_bio, rows_equal, timer, get_rows_difference, parse_user_status,
-    parse_message
+    get_user_bio, rows_equal, timer, get_rows_difference, parse_user_status
 )
 
 
+# noinspection PyTypeChecker
 class Tracker:
     def __init__(self, api_id, api_hash, phone):
         self.client = Client(
@@ -28,7 +28,7 @@ class Tracker:
             phone_number=phone
         )
 
-        self.bulk = []
+        self.flush_queue = Queue()
 
     @timer
     def update_user_info(self):
@@ -112,7 +112,7 @@ class Tracker:
         else:
             log.warn(f'User {user_status.user_id} is now {new_status}')
             user.last_status = new_status
-            self.bulk.append(
+            self.flush_queue.put(
                 OnlineHistory(
                     user_id=user_status.user_id,
                     time=datetime.now(),
@@ -121,14 +121,15 @@ class Tracker:
             )
             tracker_session.flush()
 
-    @timer
-    def flush_bulk(self):
-        tracker_session.bulk_save_objects(self.bulk)
-        self.bulk.clear()
+    @staticmethod
+    def flush_worker(queue: Queue):
+        while True:
+            q_contents = queue.get()
+            tracker_session.add(q_contents)
+            tracker_session.flush()
 
     @timer
     def update_user_photos(self):
-        shutil.rmtree('pics/')
         for contact in self.client.get_contacts():
             photos = self.client.get_user_profile_photos(contact.id).photos
             if not len(photos):
@@ -136,15 +137,17 @@ class Tracker:
             st = photos[0]
             self.client.download_media(
                 message=st,
-                file_name=f'pics/{contact.id}.jpg'
+                file_name=f'pics/{contact.id}-{str(datetime.now())}.jpg'
             )
 
     def start(self):
         self.client.add_handler(UserStatusHandler(self.on_changed_status))
 
+        flush_worker = Process(target=self.flush_worker, args=(self.flush_queue,))
+        flush_worker.start()
+
         sch.every(1).minute.do(self.update_user_info)
-        sch.every(1).minute.do(self.flush_bulk)
-        sch.every(6).hours.do(self.update_user_photos)
+        sch.every(1).hours.do(self.update_user_photos)
 
         self.client.start()
 

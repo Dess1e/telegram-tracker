@@ -20,19 +20,26 @@ def get_user_bio(username):
     return ''.join(div.contents) if div else None
 
 
-def rows_equal(row1, row2, skip_fields=()):
-    row1_parsed = {
+def _parse_row(row, skip_fields):
+    return {
         k: v
-        for k, v in row1.__dict__.items()
-        if not k.startswith('_') and k not in skip_fields
-    }
-    row2_parsed = {
-        k: v
-        for k, v in row2.__dict__.items()
+        for k, v in row.__dict__.items()
         if not k.startswith('_') and k not in skip_fields
     }
 
-    return row1_parsed == row2_parsed
+
+def rows_equal(row1, row2, skip_fields=()):
+    return _parse_row(row1, skip_fields) == _parse_row(row2, skip_fields)
+
+
+def get_rows_difference(row1, row2, skip_fields=()):
+    row1_parsed = _parse_row(row1, skip_fields)
+    row2_parsed = _parse_row(row2, skip_fields)
+    if row1_parsed.keys() != row2_parsed.keys():
+        raise Exception('Compared dict keys are not the same')
+
+    diff = set(row1_parsed.items()) - set(row2_parsed.items())
+    return list(diff)
 
 
 def timer(function):
@@ -40,27 +47,9 @@ def timer(function):
         log.warn(f'Started {function.__code__.co_name}')
         t = time()
         function(*args, **kwargs)
-        log.warn(f'Finished {function.__code__.co_name} in {time() - t} seconds')
+        passed = time() - t
+        log.warn(f'Finished {function.__code__.co_name} in {round(passed, 2)} seconds')
     return deco
-
-
-def get_rows_difference(row1, row2, skip_fields=()):
-    row1_parsed = {
-        k: v
-        for k, v in row1.__dict__.items()
-        if not k.startswith('_') and k not in skip_fields
-    }
-    row2_parsed = {
-        k: v
-        for k, v in row2.__dict__.items()
-        if not k.startswith('_') and k not in skip_fields
-    }
-
-    if row1_parsed.keys() != row2_parsed.keys():
-        raise Exception('Compared dict keys are not the same')
-
-    diff = set(row1_parsed.items()) - set(row2_parsed.items())
-    return list(diff)
 
 
 def parse_user_status(status: UserStatus):

@@ -1,0 +1,64 @@
+
+containers:
+  base-alpine:
+    setup:
+      - !Alpine v3.9
+      - !Install [coreutils, bash]
+  base-pg:
+    setup:
+      - !Container base-alpine
+      - !Install [postgresql]
+      - !Sh |
+          deluser postgres
+          addgroup postgres
+          adduser -u 200 -S -h /data -H -s /bin/bash -G postgres postgres
+      - !EnsureDir /data
+    environ:
+      PG_HOST: localhost
+      PG_PORT: 54320
+      PG_DB: tracker
+      PG_USER: postgres
+      PGDATA: /data
+      PG_INIT_SCRIPT_PATH: db/migrations.sql
+      PG_BIN: /usr/bin/
+    volumes:
+      /data: !Persistent
+        name: postgres
+        owner-uid: 200
+        owner-gid: 200
+        init-command: _pg-init
+      /run: !Tmpfs
+        subdirs:
+          postgresql: {mode: 0o777}
+
+commands:
+  _pg-init: !Command
+    description: Init pg database
+    container: base-pg
+    user-id: 200
+    group-id: 200
+    run: |
+      set -ex
+      ls -la /data
+      rm -rf /data/*
+      $PG_BIN/pg_ctl initdb -D /data
+      $PG_BIN/pg_ctl -w -o '-F --port=$PG_PORT -k /tmp' start
+      createdb --port=$PG_PORT $PG_DB
+      $PG_BIN/pg_ctl stop
+
+  postgres-dev: !Command
+    description: Run development postgresql db
+    container: base-pg
+    user-id: 200
+    group-id: 200
+    run: |
+      trap "$PG_BIN/pg_ctl -w stop; trap - INT; kill -INT $$" INT
+      $PG_BIN/pg_ctl -w -o '-F --port=$PG_PORT -k /tmp' start
+      psql postgres://$PG_USER@$PG_HOST:$PG_PORT/$PG_DB < $PG_INIT_SCRIPT_PATH
+      sleep infinity
+
+  psql: !Command
+    description: Run psql shell
+    container: base-pg
+    run: |
+      psql -U $PG_USER postgres://$PG_USER:$PG_PASSWORD@127.0.0.1:$PG_PORT/$PG_DB

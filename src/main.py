@@ -4,7 +4,7 @@ from cfg import get_cfg, extract_telegram_cfg
 
 
 log.basicConfig(
-    format='%(asctime)s %(message)s',
+    format='[%(asctime)s] %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S %p',
     level=log.WARN
 )

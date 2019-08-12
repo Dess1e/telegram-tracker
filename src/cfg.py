@@ -27,7 +27,8 @@ def extract_db_cfg(cfg):
         db = cfg['postgres']['db_name']
         user = cfg['postgres']['db_user']
         passwd = cfg['postgres']['db_pass']
-        return db, user, passwd
+        port = cfg['postgres']['db_port']
+        return db, user, passwd, port
     except KeyError:
         log.error(f'Could not parse postgres section in {CONFIG_NAME}')
         quit(1)

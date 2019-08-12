@@ -6,10 +6,10 @@ from sqlalchemy.ext.declarative import declarative_base
 from cfg import extract_db_cfg, get_cfg
 
 
-db, user, passwd = extract_db_cfg(get_cfg())
+db, user, passwd, port = extract_db_cfg(get_cfg())
 
 engine = create_engine(
-    f'postgresql://{user}:{passwd}@localhost/{db}'
+    f'postgresql://{user}:{passwd}@localhost:{port}/{db}'
 )
 
 session = sessionmaker(autocommit=True, autoflush=False, bind=engine)
